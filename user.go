@@ -52,7 +52,18 @@ func (u *User) Offline() {
 
 // DoMessage 用户处理消息的业务
 func (u *User) DoMessage(msg string) {
-	u.server.BroadCast(u, msg)
+	if msg == "who" { // 查询当前用户都有哪些
+		u.server.mapLock.Lock()
+
+		for _, user := range u.server.OnlineMap {
+			onlineMsg := "[" + user.Addr + "]" + user.Name + ":" + "在线...\n"
+			u.SendMessage(onlineMsg)
+		}
+
+		u.server.mapLock.Unlock()
+	} else {
+		u.server.BroadCast(u, msg)
+	}
 }
 
 // ListMessage 监听当前 User channel 的方法，一旦有消息，就直接发送给对端客户端
@@ -61,4 +72,9 @@ func (u *User) ListMessage() {
 		msg := <-u.C
 		u.conn.Write([]byte(msg + "\n"))
 	}
+}
+
+// SendMessage 给当前 user 对应的客户端发消息
+func (u *User) SendMessage(msg string) {
+	u.conn.Write([]byte(msg))
 }
