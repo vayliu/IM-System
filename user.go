@@ -58,7 +58,7 @@ func (u *User) DoMessage(msg string) {
 	if msg == "who" { // 查询当前用户都有哪些
 		u.server.mapLock.Lock()
 		for _, user := range u.server.OnlineMap {
-			onlineMsg := "[" + user.Addr + "]" + user.Name + ":" + "在线...\n"
+			onlineMsg := "[" + user.Addr + "]" + user.Name + ":" + "在线..."
 			u.SendMessage(onlineMsg)
 		}
 		u.server.mapLock.Unlock()
@@ -68,7 +68,7 @@ func (u *User) DoMessage(msg string) {
 		// 判断 newName 是否存在
 		_, ok := u.server.OnlineMap[newName]
 		if ok {
-			u.SendMessage("当前用户名被使用\n")
+			u.SendMessage("当前用户名被使用")
 		} else {
 			u.server.mapLock.Lock()
 			// 更新用户名
@@ -77,8 +77,29 @@ func (u *User) DoMessage(msg string) {
 			u.server.mapLock.Unlock()
 
 			u.Name = newName
-			u.SendMessage("已将您的用户名更改为：" + newName + "\n")
+			u.SendMessage("已将您的用户名更改为：" + newName)
 		}
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		// 消息格式：to|张三|消息内容
+		// 1. 获取对方用户名
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			u.SendMessage("消息格式不正确，请使用 `to|用户名|消息内容` 格式")
+			return
+		}
+		// 2. 根据用户名得到 User 对象
+		remoteUser, ok := u.server.OnlineMap[remoteName]
+		if !ok {
+			u.SendMessage("该用户名不存在")
+			return
+		}
+		// 3. 获取消息内容，通过对方的 User 对象将消息内容发送过去
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			u.SendMessage("无消息内容，请重发")
+			return
+		}
+		remoteUser.SendMessage(u.Name + "对您说：" + content)
 	} else {
 		u.server.BroadCast(u, msg)
 	}
@@ -94,5 +115,5 @@ func (u *User) ListMessage() {
 
 // SendMessage 给当前 user 对应的客户端发消息
 func (u *User) SendMessage(msg string) {
-	u.conn.Write([]byte(msg))
+	u.conn.Write([]byte(msg + "\n"))
 }
